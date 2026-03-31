@@ -2,10 +2,42 @@ import { useEffect, useRef, useCallback } from "react";
 import { get, set } from "idb-keyval";
 
 const STORAGE_KEY = "md-editor-content";
+const MODE_KEY = "md-editor-mode";
 
 interface StoredDoc {
   markdown: string;
   updatedAt: number;
+}
+
+/**
+ * Load saved content from IndexedDB. Returns null if nothing stored.
+ */
+export async function loadSavedContent(): Promise<string | null> {
+  try {
+    const doc = await get<StoredDoc>(STORAGE_KEY);
+    return doc?.markdown ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Load saved view mode from IndexedDB. Returns "read" if nothing stored.
+ */
+export async function loadSavedMode(): Promise<"read" | "edit"> {
+  try {
+    const mode = await get<"read" | "edit">(MODE_KEY);
+    return mode ?? "read";
+  } catch {
+    return "read";
+  }
+}
+
+/**
+ * Save view mode to IndexedDB.
+ */
+export function saveMode(mode: "read" | "edit"): void {
+  set(MODE_KEY, mode);
 }
 
 /**
@@ -42,16 +74,4 @@ export function useAutoSave(content: string, delay = 500) {
     document.addEventListener("visibilitychange", onVisChange);
     return () => document.removeEventListener("visibilitychange", onVisChange);
   }, [flush]);
-}
-
-/**
- * Load saved content from IndexedDB. Returns null if nothing stored.
- */
-export async function loadSavedContent(): Promise<string | null> {
-  try {
-    const doc = await get<StoredDoc>(STORAGE_KEY);
-    return doc?.markdown ?? null;
-  } catch {
-    return null;
-  }
 }
