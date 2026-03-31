@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Form, Link, useLoaderData } from "react-router";
 import { MilkdownEditor } from "~/components/MilkdownEditor";
 import {
   loadSavedContent,
@@ -7,12 +9,10 @@ import {
 } from "~/hooks/useAutoSave";
 import { useSaveToDisk } from "~/hooks/useSaveToDisk";
 import { useTheme } from "~/hooks/useTheme";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, Form, useLoaderData } from "react-router";
+import { getEnv, requireSession } from "~/utils/auth.server";
 import type { Route } from "./+types/md";
-import { requireSession, getEnv } from "~/utils/auth.server";
 
-type ViewMode = "read" | "edit";
+type ViewMode = "raw" | "md";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = getEnv(context);
@@ -25,7 +25,7 @@ export default function Editor() {
   const { theme, toggle } = useTheme();
   const [value, setValue] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
-  const [view, setView] = useState<ViewMode>("read");
+  const [view, setView] = useState<ViewMode>("raw");
   const contentRef = useRef<string>(value);
 
   contentRef.current = value;
@@ -69,7 +69,7 @@ export default function Editor() {
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1 font-mono text-[11px] tracking-wider uppercase">
-            {(["read", "edit"] as ViewMode[]).map((mode) => (
+            {(["raw", "md"] as ViewMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setView(mode)}
@@ -137,12 +137,19 @@ export default function Editor() {
       </header>
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        <MilkdownEditor
-          defaultValue={value}
-          onChange={handleChange}
-          readonly={view === "read"}
-          className="flex-1 flex flex-col"
-        />
+        {view === "raw" ? (
+          <textarea
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className="flex-1 p-4 font-mono text-sm resize-none bg-transparent outline-none"
+          />
+        ) : (
+          <MilkdownEditor
+            defaultValue={value}
+            onChange={handleChange}
+            className="flex-1 flex flex-col"
+          />
+        )}
       </main>
 
       <footer className="flex items-center justify-between px-4 py-2 font-mono text-[10px] tracking-wider uppercase">

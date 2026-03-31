@@ -22,21 +22,21 @@ export async function loadSavedContent(): Promise<string | null> {
 }
 
 /**
- * Load saved view mode from IndexedDB. Returns "read" if nothing stored.
+ * Load saved view mode from IndexedDB. Returns "raw" if nothing stored.
  */
-export async function loadSavedMode(): Promise<"read" | "edit"> {
+export async function loadSavedMode(): Promise<"raw" | "md"> {
   try {
-    const mode = await get<"read" | "edit">(MODE_KEY);
-    return mode ?? "read";
+    const mode = await get<"raw" | "md">(MODE_KEY);
+    return mode ?? "raw";
   } catch {
-    return "read";
+    return "raw";
   }
 }
 
 /**
  * Save view mode to IndexedDB.
  */
-export function saveMode(mode: "read" | "edit"): void {
+export function saveMode(mode: "raw" | "md"): void {
   set(MODE_KEY, mode);
 }
 
