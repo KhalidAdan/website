@@ -6,23 +6,20 @@ export default function Home() {
 
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center px-6">
-      {/* Theme toggle — top right */}
       <button
         onClick={toggle}
-        className="fixed top-5 right-5 text-xs font-mono tracking-wider uppercase
-                 
-                   transition-colors cursor-pointer"
+        className="fixed top-5 right-5 text-xs font-mono tracking-wider uppercase transition-colors cursor-pointer"
       >
         {theme === "light" ? "dark" : "light"}
       </button>
 
       <div className="max-w-md w-full space-y-8 text-center">
         <h1 className="font-sans text-4xl font-semibold tracking-tight">
-          khld<span className="text-[var(--color-accent)]">.</span>dev
+          khld<span className="text-accent">.</span>dev
         </h1>
 
         <p className="text-base leading-relaxed">
-          A personal space for writing and thinking in markdown for Khalid.
+          A personal space for writing and thinking in markdown.
         </p>
 
         <Link
@@ -36,7 +33,7 @@ export default function Home() {
       </div>
 
       <p className="fixed bottom-5 text-[10px] font-mono tracking-widest uppercase">
-        Note: ctrl+s saves document state as .md
+        Note: ctrl+s saves editor state as .md
       </p>
     </div>
   );

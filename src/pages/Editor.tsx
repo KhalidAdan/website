@@ -14,21 +14,16 @@ type ViewMode = "read" | "edit";
 
 export default function Editor() {
   const { theme, toggle } = useTheme();
-  const [value, setValue] = useState<string>(``);
+  const [value, setValue] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
   const [view, setView] = useState<ViewMode>("read");
   const contentRef = useRef<string>(value);
 
-  // Keep the ref in sync for the save-to-disk hook
   contentRef.current = value;
 
-  // Auto-save to IndexedDB
   useAutoSave(value);
-
-  // Ctrl+S → save raw markdown to disk
   useSaveToDisk(contentRef);
 
-  // Load persisted content and mode on mount
   useEffect(() => {
     Promise.all([loadSavedContent(), loadSavedMode()]).then(([saved, mode]) => {
       if (saved !== null) setValue(saved);
@@ -37,7 +32,6 @@ export default function Editor() {
     });
   }, []);
 
-  // Persist mode when it changes
   useEffect(() => {
     if (loaded) saveMode(view);
   }, [view, loaded]);
@@ -49,49 +43,81 @@ export default function Editor() {
   if (!loaded) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
-        <span className="font-mono text-xs text-muted animate-pulse">
-          loading…
-        </span>
+        <span className="font-mono text-xs animate-pulse">loading…</span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-dvh flex flex-col " data-color-mode={theme}>
-      {/* ─── Top bar ─── */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-gray-300 dark:border-gray-600 transition-colors">
+    <div className="min-h-dvh flex flex-col" data-color-mode={theme}>
+      <header className="flex items-center justify-between px-4 py-3">
         <Link
           to="/"
-          className="font-sans text-sm font-semibold tracking-tight text-primary hover:text-accent transition-colors"
+          className="font-sans text-sm font-semibold tracking-tight transition-colors hover:text-accent"
         >
           khld<span className="text-accent">.</span>dev
         </Link>
 
         <div className="flex items-center gap-4">
-          {/* View mode toggle */}
-          <div className="flex items-center gap-2.5 font-mono text-[11px] tracking-wider uppercase">
+          <div className="flex items-center gap-1 font-mono text-[11px] tracking-wider uppercase">
             {(["read", "edit"] as ViewMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setView(mode)}
-                className="px-2 py-1 rounded cursor-pointer transition-colors hover:bg-accent hover:text-ink-dark"
+                className={`px-2 py-1 rounded cursor-pointer transition-colors hover:bg-accent hover:text-white`}
               >
                 {mode}
               </button>
             ))}
           </div>
 
-          {/* Theme toggle */}
           <button
             onClick={toggle}
             className="text-[11px] font-mono tracking-wider uppercase cursor-pointer"
           >
-            {theme === "light" ? "dark" : "light"}
+            {theme === "light" ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                className="lucide lucide-sun-medium-icon lucide-sun-medium"
+              >
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 3v1" />
+                <path d="M12 20v1" />
+                <path d="M3 12h1" />
+                <path d="M20 12h1" />
+                <path d="m18.364 5.636-.707.707" />
+                <path d="m6.343 17.657-.707.707" />
+                <path d="m5.636 5.636.707.707" />
+                <path d="m17.657 17.657.707.707" />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                className="lucide lucide-moon-icon lucide-moon"
+              >
+                <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" />
+              </svg>
+            )}
           </button>
         </div>
       </header>
 
-      {/* ─── Editor ─── */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <MilkdownEditor
           defaultValue={value}
@@ -101,8 +127,7 @@ export default function Editor() {
         />
       </main>
 
-      {/* ─── Status bar ─── */}
-      <footer className="flex items-center justify-between px-4 py-2 font-mono text-[10px] tracking-wider uppercase border-t border-gray-300 dark:border-gray-600 transition-colors">
+      <footer className="flex items-center justify-between px-4 py-2 font-mono text-[10px] tracking-wider uppercase">
         <span>{value.length.toLocaleString()} chars</span>
         <span>auto-saved</span>
         <span>ctrl+s → .md</span>
