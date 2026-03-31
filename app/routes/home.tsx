@@ -1,21 +1,15 @@
-import { Link, useOutletContext } from "react-router";
+import { Link, useLoaderData } from "react-router";
 import type { Route } from "./+types/home";
 import { getSession, getEnv } from "~/utils/auth.server";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const session = await getSession(request, env);
-  if (session) {
-    throw new Response(null, {
-      status: 302,
-      headers: { Location: "/md" },
-    });
-  }
-  return null;
+  return { user: session };
 }
 
 export default function Home() {
-  const { theme } = useOutletContext<{ user: unknown; theme?: { theme: string; toggle: () => void } }>();
+  const { user } = useLoaderData<typeof loader>();
 
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center px-6">

@@ -24,7 +24,8 @@
     "baseUrl": ".",
     "paths": {
       "~/*": ["./app/*"]
-    }
+    },
+    "rootDirs": [".", "./.react-router/types"]
   },
   "include": ["app", "env.d.ts"]
 }
