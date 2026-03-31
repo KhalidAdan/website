@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
 import { useTheme } from "@/hooks/useTheme";
+import { Link } from "react-router-dom";
 
 export default function Home() {
   const { theme, toggle } = useTheme();
@@ -23,7 +23,7 @@ export default function Home() {
         </h1>
 
         <p className="text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] text-base leading-relaxed">
-          A personal space for writing and thinking in markdown.
+          A personal space for writing and thinking in markdown for Khalid.
         </p>
 
         <Link
@@ -39,7 +39,7 @@ export default function Home() {
       </div>
 
       <p className="fixed bottom-5 text-[10px] font-mono text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] tracking-widest uppercase">
-        ctrl+s saves as .md
+        Note: ctrl+s saves document state as .md
       </p>
     </div>
   );

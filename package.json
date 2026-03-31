@@ -9,8 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@milkdown/kit": "^7.20.0",
+    "@milkdown/preset-commonmark": "^7.20.0",
+    "@milkdown/preset-gfm": "^7.20.0",
+    "@milkdown/react": "^7.20.0",
     "@tailwindcss/typography": "^0.5.16",
-    "@uiw/react-md-editor": "^4.0.5",
     "idb-keyval": "^6.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

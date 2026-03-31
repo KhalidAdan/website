@@ -1,7 +1,7 @@
+import { MilkdownEditor } from "@/components/MilkdownEditor";
 import { loadSavedContent, useAutoSave } from "@/hooks/useAutoSave";
 import { useSaveToDisk } from "@/hooks/useSaveToDisk";
 import { useTheme } from "@/hooks/useTheme";
-import MDEditor from "@uiw/react-md-editor";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -12,13 +12,13 @@ Start writing markdown here. Your work is auto-saved locally.
 **Ctrl+S** saves to disk as a \`.md\` file.
 `;
 
-type ViewMode = "live" | "markdown";
+type ViewMode = "read" | "edit";
 
 export default function Editor() {
   const { theme, toggle } = useTheme();
   const [value, setValue] = useState<string>(PLACEHOLDER);
   const [loaded, setLoaded] = useState(false);
-  const [view, setView] = useState<ViewMode>("live");
+  const [view, setView] = useState<ViewMode>("read");
   const contentRef = useRef<string>(value);
 
   // Keep the ref in sync for the save-to-disk hook
@@ -38,12 +38,9 @@ export default function Editor() {
     });
   }, []);
 
-  const handleChange = useCallback((val?: string) => {
-    setValue(val ?? "");
+  const handleChange = useCallback((markdown: string) => {
+    setValue(markdown);
   }, []);
-
-  // Map our view mode to the editor's preview prop
-  const previewMode = view === "live" ? "preview" : "edit";
 
   if (!loaded) {
     return (
@@ -56,7 +53,7 @@ export default function Editor() {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col" data-color-mode={theme}>
+    <div className="min-h-dvh flex flex-col">
       {/* ─── Top bar ─── */}
       <header
         className="flex items-center justify-between px-4 py-3
@@ -74,7 +71,7 @@ export default function Editor() {
         <div className="flex items-center gap-4">
           {/* View mode toggle */}
           <div className="flex items-center gap-1 font-mono text-[11px] tracking-wider uppercase">
-            {(["edit", "live", "preview"] as ViewMode[]).map((mode) => (
+            {(["read", "edit"] as ViewMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setView(mode)}
@@ -103,19 +100,12 @@ export default function Editor() {
       </header>
 
       {/* ─── Editor ─── */}
-      <main className="flex-1 flex flex-col">
-        <MDEditor
-          value={value}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <MilkdownEditor
+          defaultValue={value}
           onChange={handleChange}
-          preview={previewMode}
-          height="100%"
-          visibleDragbar={false}
-          hideToolbar
-          className="flex-1 !rounded-none"
-          previewOptions={{
-            className:
-              "prose prose-stone dark:prose-invert max-w-none !bg-transparent",
-          }}
+          readonly={view === "read"}
+          className="flex-1 flex flex-col"
         />
       </main>
 
