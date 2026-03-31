@@ -1,3 +1,4 @@
+import { ThemeProvider } from "~/hooks/useTheme";
 import {
   Links,
   Meta,
@@ -49,7 +50,9 @@ export default function Root() {
         <Links />
       </head>
       <body>
-        <Outlet context={{ user }} />
+        <ThemeProvider>
+          <Outlet context={{ user }} />
+        </ThemeProvider>
         <ScrollRestoration />
         <Scripts />
       </body>
