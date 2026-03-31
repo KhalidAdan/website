@@ -1,0 +1,105 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --font-sans: "Instrument Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-surface: #fafaf9;
+  --color-surface-dark: #0c0c0c;
+  --color-ink: #1c1917;
+  --color-ink-dark: #e7e5e4;
+  --color-muted: #78716c;
+  --color-muted-dark: #a8a29e;
+  --color-border: #e7e5e4;
+  --color-border-dark: #292524;
+  --color-accent: #dc2626;
+}
+
+/*
+ * Reset & base
+ */
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dark body,
+body.dark {
+  background: var(--color-surface-dark);
+  color: var(--color-ink-dark);
+}
+
+/*
+ * Override @uiw/react-md-editor styles to match our theme.
+ * The editor ships with !important on a lot of things,
+ * so we need to be aggressive here.
+ */
+.w-md-editor {
+  --md-editor-font-family: var(--font-mono) !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: inherit !important;
+}
+
+.w-md-editor-text-pre > code,
+.w-md-editor-text-input,
+.w-md-editor-text textarea {
+  font-family: var(--font-mono) !important;
+  font-size: 0.9rem !important;
+  line-height: 1.7 !important;
+}
+
+/* Hide the default toolbar — we build our own minimal one */
+.w-md-editor-toolbar {
+  display: none !important;
+}
+
+/* Preview pane containment for perf */
+.w-md-editor-preview {
+  contain: layout style paint;
+}
+
+.w-md-editor-preview > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 100px;
+}
+
+/*
+ * Dark mode overrides for the editor
+ */
+.dark .w-md-editor {
+  --color-canvas-default: transparent !important;
+  --color-fg-default: var(--color-ink-dark) !important;
+}
+
+.dark .w-md-editor-text-pre > code,
+.dark .w-md-editor-text-input,
+.dark .w-md-editor-text textarea {
+  color: var(--color-ink-dark) !important;
+}
+
+/*
+ * Prose overrides — tighten typography defaults
+ */
+.prose {
+  font-family: var(--font-sans);
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.prose pre {
+  font-family: var(--font-mono);
+}
