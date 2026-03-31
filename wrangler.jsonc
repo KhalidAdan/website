@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "khld-md",
+  "main": "./workers/app.ts",
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./build/client",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "khld-dev-db",
+      "database_id": "14faa5e8-fb1b-4a8b-af06-dc651dc41c65",
+      "migrations_dir": "./drizzle",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "DOCS",
+      "bucket_name": "khld-md-docs",
+    },
+  ],
+  "vars": {
+    "BETTER_AUTH_URL": "http://localhost:5173",
+  },
+}

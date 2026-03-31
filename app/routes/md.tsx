@@ -1,18 +1,27 @@
-import { MilkdownEditor } from "@/components/MilkdownEditor";
+import { MilkdownEditor } from "~/components/MilkdownEditor";
 import {
   loadSavedContent,
   loadSavedMode,
   saveMode,
   useAutoSave,
-} from "@/hooks/useAutoSave";
-import { useSaveToDisk } from "@/hooks/useSaveToDisk";
-import { useTheme } from "@/hooks/useTheme";
+} from "~/hooks/useAutoSave";
+import { useSaveToDisk } from "~/hooks/useSaveToDisk";
+import { useTheme } from "~/hooks/useTheme";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Form, useLoaderData } from "react-router";
+import type { Route } from "./+types/md";
+import { requireSession, getEnv } from "~/utils/auth.server";
 
 type ViewMode = "read" | "edit";
 
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const env = getEnv(context);
+  const { user } = await requireSession(request, env);
+  return { user: { id: user.id, name: user.name, email: user.email } };
+}
+
 export default function Editor() {
+  const { user } = useLoaderData<typeof loader>();
   const { theme, toggle } = useTheme();
   const [value, setValue] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
@@ -83,9 +92,9 @@ export default function Editor() {
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 className="lucide lucide-sun-medium-icon lucide-sun-medium"
               >
                 <circle cx="12" cy="12" r="4" />
@@ -106,15 +115,24 @@ export default function Editor() {
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 className="lucide lucide-moon-icon lucide-moon"
               >
                 <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" />
               </svg>
             )}
           </button>
+
+          <Form method="post" action="/logout">
+            <button
+              type="submit"
+              className="text-[11px] font-mono tracking-wider uppercase cursor-pointer"
+            >
+              log out
+            </button>
+          </Form>
         </div>
       </header>
 

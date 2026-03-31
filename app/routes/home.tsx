@@ -1,18 +1,24 @@
-import { useTheme } from "@/hooks/useTheme";
-import { Link } from "react-router-dom";
+import { Link, useOutletContext } from "react-router";
+import type { Route } from "./+types/home";
+import { getSession, getEnv } from "~/utils/auth.server";
+
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const env = getEnv(context);
+  const session = await getSession(request, env);
+  if (session) {
+    throw new Response(null, {
+      status: 302,
+      headers: { Location: "/md" },
+    });
+  }
+  return null;
+}
 
 export default function Home() {
-  const { theme, toggle } = useTheme();
+  const { theme } = useOutletContext<{ user: unknown; theme?: { theme: string; toggle: () => void } }>();
 
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center px-6">
-      <button
-        onClick={toggle}
-        className="fixed top-5 right-5 text-xs font-mono tracking-wider uppercase transition-colors cursor-pointer"
-      >
-        {theme === "light" ? "dark" : "light"}
-      </button>
-
       <div className="max-w-md w-full space-y-8 text-center">
         <h1 className="font-sans text-4xl font-semibold tracking-tight">
           khld<span className="text-accent">.</span>dev
@@ -33,7 +39,7 @@ export default function Home() {
       </div>
 
       <p className="fixed bottom-5 text-[10px] font-mono tracking-widest uppercase">
-        Note: ctrl+s saves editor state as .md
+        <Link to="/login">log in</Link> or <Link to="/signup">sign up</Link>
       </p>
     </div>
   );

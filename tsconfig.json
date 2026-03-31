@@ -23,8 +23,8 @@
     "types": ["vite/client", "node"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "~/*": ["./app/*"]
     }
   },
-  "include": ["src"]
+  "include": ["app", "env.d.ts"]
 }
