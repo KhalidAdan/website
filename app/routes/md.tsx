@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form, Link, useLoaderData } from "react-router";
 import { MilkdownEditor } from "~/components/MilkdownEditor";
 import {
@@ -27,6 +27,11 @@ export default function Editor() {
   const [loaded, setLoaded] = useState(false);
   const [view, setView] = useState<ViewMode>("raw");
   const contentRef = useRef<string>(value);
+
+  const wordCount = useMemo(() => {
+    const words = value.trim().split(/\s+/);
+    return words[0] === "" ? 0 : words.length;
+  }, [value]);
 
   contentRef.current = value;
 
@@ -153,7 +158,7 @@ export default function Editor() {
       </main>
 
       <footer className="flex items-center justify-between px-4 py-2 font-mono text-[10px] tracking-wider uppercase">
-        <span>{value.length.toLocaleString()} chars</span>
+        <span>{wordCount.toLocaleString()} words · {value.length.toLocaleString()} chars</span>
         <span>auto-saved</span>
         <span>ctrl+s → .md</span>
       </footer>
