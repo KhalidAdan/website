@@ -125,7 +125,8 @@ export function DocumentTree({ documents, selectedId, onSelect }: Props) {
             initialTree={tree}
             loadChildren={async (branch) => {
               const res = await fetch(`/api/documents?parentId=${branch.id}`);
-              return res.json();
+              const docs = await res.json();
+              return docsToTree(docs);
             }}
             branch={renderBranch}
             item={renderItem}
