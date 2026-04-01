@@ -260,3 +260,41 @@ body.dark {
   cursor: default;
   user-select: text;
 }
+
+/* Hierarchy guides for nested folders */
+/* These add visual guide lines without interfering with lazy-tree-view's indentation */
+
+/* Only show guides on nested lists (ul inside li) */
+.hierarchy-guides li > ul > li {
+  position: relative;
+}
+
+/* Vertical guide line */
+.hierarchy-guides li > ul > li::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--tree-item-indentation, 0px) - 12px);
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: oklch(var(--bc) / 0.12);
+  pointer-events: none;
+}
+
+/* Horizontal connector line */
+.hierarchy-guides li > ul > li::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--tree-item-indentation, 0px) - 12px);
+  top: 50%;
+  width: 8px;
+  height: 1px;
+  background: oklch(var(--bc) / 0.12);
+  pointer-events: none;
+}
+
+/* Dark mode */
+.dark .hierarchy-guides li > ul > li::before,
+.dark .hierarchy-guides li > ul > li::after {
+  background: oklch(var(--bc) / 0.18);
+}

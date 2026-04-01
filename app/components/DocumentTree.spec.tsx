@@ -11,8 +11,8 @@ vi.mock("react-router", () => ({
 }));
 
 vi.mock("lazy-tree-view", () => ({
-  LazyTreeView: ({ initialTree, loadChildren }: { initialTree: any[]; loadChildren?: (branch: any) => Promise<any[]> }) => (
-    <div data-testid="tree">
+  LazyTreeView: ({ initialTree, loadChildren, className }: { initialTree: any[]; loadChildren?: (branch: any) => Promise<any[]>; className?: string }) => (
+    <div data-testid="tree" className={className}>
       {initialTree?.map((node: any) => (
         <div key={node.id} data-testid={`node-${node.name}`}>
           {node.name}
@@ -164,5 +164,36 @@ describe("DocumentTree", () => {
     const docNode = result.find((n: any) => n.id === "doc-1");
     expect(docNode).toBeDefined();
     expect("children" in docNode).toBe(false);
+  });
+
+  it("renders resize handle", () => {
+    render(<DocumentTree documents={[]} selectedId={null} onSelect={() => {}} />);
+    expect(screen.getByTestId("resize-handle")).toBeInTheDocument();
+    expect(screen.getByTestId("resize-handle")).toHaveAttribute("role", "separator");
+    expect(screen.getByTestId("resize-handle")).toHaveAttribute("aria-orientation", "vertical");
+  });
+
+  it("renders hierarchy guides by default", () => {
+    render(<DocumentTree documents={[]} selectedId={null} onSelect={() => {}} />);
+    const container = document.querySelector("[data-tree-container]");
+    expect(container).toHaveAttribute("data-show-guides", "true");
+  });
+
+  it("does not render hierarchy guides when disabled", () => {
+    render(<DocumentTree documents={[]} selectedId={null} onSelect={() => {}} showHierarchyGuides={false} />);
+    const container = document.querySelector("[data-tree-container]");
+    expect(container).toHaveAttribute("data-show-guides", "false");
+  });
+
+  it("applies default width", () => {
+    render(<DocumentTree documents={[]} selectedId={null} onSelect={() => {}} />);
+    const container = screen.getByText(/no documents/i).closest(".relative");
+    expect(container).toHaveStyle({ width: "256px" });
+  });
+
+  it("applies custom width props", () => {
+    render(<DocumentTree documents={[]} selectedId={null} onSelect={() => {}} defaultWidth={300} minWidth={150} maxWidth={500} />);
+    const container = screen.getByText(/no documents/i).closest(".relative");
+    expect(container).toHaveStyle({ width: "300px", maxWidth: "500px" });
   });
 });

@@ -1,7 +1,7 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import { useFetcher } from "react-router";
 import { LazyTreeView, type TreeNode, type BranchNode, isBranchNode, type LazyTreeViewHandle, type BranchProps } from "lazy-tree-view";
-import { FolderIcon, FileText, ChevronRight, ChevronDown, FilePlus, FolderPlus, Loader2 } from "lucide-react";
+import { FolderIcon, FileText, ChevronRight, ChevronDown, FilePlus, FolderPlus, Loader2, GripVertical } from "lucide-react";
 import { docsToTree, type DocRow } from "~/utils/documents";
 import { calculatePosition, getSiblings } from "~/utils/position";
 
@@ -9,12 +9,56 @@ interface Props {
   documents: DocRow[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  showHierarchyGuides?: boolean;
+  maxWidth?: number;
+  defaultWidth?: number;
+  minWidth?: number;
+  storageKey?: string;
 }
 
-export function DocumentTree({ documents, selectedId, onSelect }: Props) {
+export function DocumentTree({ documents, selectedId, onSelect, showHierarchyGuides = true, maxWidth = 400, defaultWidth = 256, minWidth = 200, storageKey = "document-tree-width" }: Props) {
   const tree = docsToTree(documents);
   const treeRef = useRef<LazyTreeViewHandle>(null);
   const fetcher = useFetcher();
+  const [width, setWidth] = useState(defaultWidth);
+  const [isResizing, setIsResizing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (!isNaN(parsed) && parsed >= minWidth && parsed <= maxWidth) {
+        setWidth(parsed);
+      }
+    }
+  }, [storageKey, minWidth, maxWidth]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !containerRef.current) return;
+      const newWidth = e.clientX - containerRef.current.getBoundingClientRect().left;
+      const clampedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+      setWidth(clampedWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing) {
+        setIsResizing(false);
+        localStorage.setItem(storageKey, width.toString());
+      }
+    };
+
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing, width, storageKey, minWidth, maxWidth]);
 
   const handleSelect = useCallback(
     (node: TreeNode) => {
@@ -47,8 +91,11 @@ export function DocumentTree({ documents, selectedId, onSelect }: Props) {
     // Show subtle loading state while mutation is in-flight
   }
 
-  const renderItem = (node: TreeNode) => {
+  const renderItem = (node: TreeNode & { depth?: number }) => {
     const isSelected = node.id === selectedId;
+    const depth = node.depth ?? 0;
+    // Linear indentation: 20px per nesting level
+    const indentation = depth * 20;
     return (
       <button
         onClick={() => handleSelect(node)}
@@ -57,6 +104,7 @@ export function DocumentTree({ documents, selectedId, onSelect }: Props) {
             ? "bg-black/10 dark:bg-white/10"
             : "hover:bg-black/5 dark:hover:bg-white/5"
         }`}
+        style={{ paddingLeft: `${indentation + 8}px` }}
       >
         <FileText className="w-4 h-4 shrink-0" />
         <span className="truncate">{node.name}</span>
@@ -66,8 +114,14 @@ export function DocumentTree({ documents, selectedId, onSelect }: Props) {
 
   const renderBranch = (node: BranchProps) => {
     const isSelected = node.id === selectedId;
+    const depth = node.depth ?? 0;
+    // Linear indentation: 20px per nesting level
+    const indentation = depth * 20;
     return (
-      <div className="flex items-center">
+      <div
+        className="flex items-center"
+        style={{ paddingLeft: `${indentation}px` }}
+      >
         <button
           onClick={() => handleSelect(node)}
           className={`flex items-center gap-2 px-2 py-1 text-sm rounded transition-colors ${
@@ -99,7 +153,11 @@ export function DocumentTree({ documents, selectedId, onSelect }: Props) {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div
+      ref={containerRef}
+      className="flex flex-col h-full relative"
+      style={{ width: `${width}px`, maxWidth: `${maxWidth}px` }}
+    >
       <div className="flex gap-1 p-2">
         <button
           onClick={() => handleCreateDoc(null)}
@@ -116,7 +174,7 @@ export function DocumentTree({ documents, selectedId, onSelect }: Props) {
           folder
         </button>
       </div>
-      <div className="flex-1 overflow-auto p-2">
+      <div className="flex-1 overflow-auto p-2" data-tree-container data-show-guides={showHierarchyGuides}>
         {tree.length === 0 ? (
           <p className="text-xs text-gray-500 p-2">No documents yet</p>
         ) : (
@@ -131,6 +189,7 @@ export function DocumentTree({ documents, selectedId, onSelect }: Props) {
             branch={renderBranch}
             item={renderItem}
             allowDragAndDrop
+            className={showHierarchyGuides ? "hierarchy-guides" : ""}
             onDrop={(data) => {
               const sourceId = data.source.id;
               const targetId = data.target.id;
@@ -175,6 +234,19 @@ export function DocumentTree({ documents, selectedId, onSelect }: Props) {
             }}
           />
         )}
+      </div>
+      <div
+        data-testid="resize-handle"
+        className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-black/20 dark:hover:bg-white/20 active:bg-black/30 dark:active:bg-white/30 transition-colors z-50 flex items-center justify-center group"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          setIsResizing(true);
+        }}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize sidebar"
+      >
+        <GripVertical className="w-3 h-3 text-black/40 dark:text-white/40 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
     </div>
   );

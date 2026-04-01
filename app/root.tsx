@@ -7,6 +7,7 @@ import {
   useLoaderData,
 } from "react-router";
 import stylesheet from "~/app.css?url";
+import lazyTreeViewStyles from "lazy-tree-view/styles.css?url";
 import { ThemeProvider, getThemeScript } from "~/hooks/useTheme";
 import { getEnv, getSession } from "~/utils/auth.server";
 import type { Route } from "./+types/root";
@@ -22,6 +23,7 @@ export const links: Route.LinksFunction = () => [
     rel: "stylesheet",
     href: "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap",
   },
+  { rel: "stylesheet", href: lazyTreeViewStyles },
   { rel: "stylesheet", href: stylesheet },
 ];
 
