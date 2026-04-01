@@ -8,7 +8,12 @@ import {
 } from "react-router";
 import stylesheet from "~/app.css?url";
 import lazyTreeViewStyles from "lazy-tree-view/styles.css?url";
-import { ThemeProvider, getThemeScript } from "~/hooks/useTheme";
+import {
+  ThemeProvider,
+  getThemeScript,
+  getSystemPrefListenerScript,
+  CRITICAL_THEME_CSS,
+} from "~/hooks/useTheme";
 import { getEnv, getSession } from "~/utils/auth.server";
 import type { Route } from "./+types/root";
 
@@ -30,6 +35,12 @@ export const links: Route.LinksFunction = () => [
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const session = await getSession(request, env);
+
+  // Read theme cookie so the server can render the correct class on <html>
+  const cookieHeader = request.headers.get("Cookie") || "";
+  const themeMatch = cookieHeader.match(/theme=(dark|light)/);
+  const theme = themeMatch ? themeMatch[1] : null;
+
   return {
     user: session?.user
       ? {
@@ -38,20 +49,28 @@ export async function loader({ request, context }: Route.LoaderArgs) {
           email: session.user.email,
         }
       : null,
+    theme,
   };
 }
 
 export default function Root() {
-  const { user } = useLoaderData<typeof loader>();
+  const { user, theme } = useLoaderData<typeof loader>();
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={theme === "dark" ? "dark" : undefined}
+      suppressHydrationWarning
+    >
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* Critical CSS: sets background before external stylesheets load */}
+        <style dangerouslySetInnerHTML={{ __html: CRITICAL_THEME_CSS }} />
+        {/* Blocking script: detects theme from cookie/localStorage/system */}
+        <script dangerouslySetInnerHTML={{ __html: getThemeScript() }} />
         <Meta />
         <Links />
         <title>khld.dev</title>
-        <script dangerouslySetInnerHTML={{ __html: getThemeScript() }} />
       </head>
       <body>
         <ThemeProvider>
@@ -59,6 +78,10 @@ export default function Root() {
         </ThemeProvider>
         <ScrollRestoration />
         <Scripts />
+        {/* React for system color-scheme changes */}
+        <script
+          dangerouslySetInnerHTML={{ __html: getSystemPrefListenerScript() }}
+        />
       </body>
     </html>
   );

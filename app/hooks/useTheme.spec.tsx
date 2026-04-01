@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { ThemeProvider, useTheme, getThemeScript } from "./useTheme";
+import {
+  ThemeProvider,
+  useTheme,
+  getThemeScript,
+  getSystemPrefListenerScript,
+  CRITICAL_THEME_CSS,
+} from "./useTheme";
 
 describe("useTheme", () => {
   it("provides default theme", () => {
@@ -78,36 +84,83 @@ describe("useTheme", () => {
 });
 
 describe("getThemeScript", () => {
-  it("returns script that sets dark class when cookie is dark", () => {
+  it("returns a self-executing function", () => {
+    const script = getThemeScript();
+    expect(script).toMatch(/^\(function\(\)\{/);
+    expect(script).toMatch(/\}\)\(\)$/);
+  });
+
+  it("checks cookie for theme value", () => {
+    const script = getThemeScript();
+    expect(script).toContain("document.cookie.match");
+    expect(script).toContain("theme=(dark|light)");
+  });
+
+  it("falls back to localStorage", () => {
+    const script = getThemeScript();
+    expect(script).toContain("localStorage.getItem");
+  });
+
+  it("falls back to matchMedia for system preference", () => {
+    const script = getThemeScript();
+    expect(script).toContain("prefers-color-scheme:dark");
+  });
+
+  it("toggles dark class on documentElement", () => {
+    const script = getThemeScript();
+    expect(script).toContain("classList.toggle");
+    expect(script).toContain("dark");
+  });
+
+  it("writes theme cookie for server-side rendering", () => {
+    const script = getThemeScript();
+    expect(script).toContain("document.cookie='theme='");
+  });
+
+  it("returns a consistent static string regardless of runtime state", () => {
     document.cookie = "theme=dark";
-    const script = getThemeScript();
-    expect(script).toContain("'dark' === 'dark'");
-  });
-
-  it("returns script that sets light class when cookie is light", () => {
+    const a = getThemeScript();
     document.cookie = "theme=light";
-    const script = getThemeScript();
-    expect(script).not.toContain("'dark' === 'dark'");
+    const b = getThemeScript();
+    expect(a).toBe(b);
+  });
+});
+
+describe("CRITICAL_THEME_CSS", () => {
+  it("includes light mode background color", () => {
+    expect(CRITICAL_THEME_CSS).toContain("#fdfcff");
   });
 
-  it("falls back to localStorage when no cookie", () => {
-    window.localStorage.setItem("theme", "dark");
-    const script = getThemeScript();
-    expect(script).toContain("'dark' === 'dark'");
+  it("includes dark mode background color", () => {
+    expect(CRITICAL_THEME_CSS).toContain("#1b1c1d");
   });
 
-  it("falls back to system preference when no storage", () => {
-    window.matchMedia = vi.fn().mockImplementation((query) => ({
-      matches: true,
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
-    const script = getThemeScript();
-    expect(script).toContain("'dark' === 'dark'");
+  it("targets html.dark selector", () => {
+    expect(CRITICAL_THEME_CSS).toContain("html.dark");
+  });
+
+  it("sets color-scheme for dark mode", () => {
+    expect(CRITICAL_THEME_CSS).toContain("color-scheme:dark");
+  });
+});
+
+describe("getSystemPrefListenerScript", () => {
+  it("returns a self-executing function", () => {
+    const script = getSystemPrefListenerScript();
+    expect(script).toMatch(/^\(function\(\)\{/);
+    expect(script).toMatch(/\}\)\(\)$/);
+  });
+
+  it("listens for prefers-color-scheme changes", () => {
+    const script = getSystemPrefListenerScript();
+    expect(script).toContain("addEventListener");
+    expect(script).toContain("change");
+    expect(script).toContain("prefers-color-scheme:dark");
+  });
+
+  it("checks for existing cookie before overriding", () => {
+    const script = getSystemPrefListenerScript();
+    expect(script).toContain("document.cookie.match");
+    expect(script).toContain("if(!c)");
   });
 });
