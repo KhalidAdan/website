@@ -1,4 +1,3 @@
-import { ThemeProvider } from "~/hooks/useTheme";
 import {
   Links,
   Meta,
@@ -7,9 +6,10 @@ import {
   ScrollRestoration,
   useLoaderData,
 } from "react-router";
-import type { Route } from "./+types/root";
-import { getSession, getEnv } from "~/utils/auth.server";
 import stylesheet from "~/app.css?url";
+import { ThemeProvider } from "~/hooks/useTheme";
+import { getEnv, getSession } from "~/utils/auth.server";
+import type { Route } from "./+types/root";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -48,6 +48,7 @@ export default function Root() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
+        <title>khld.dev</title>
       </head>
       <body>
         <ThemeProvider>
