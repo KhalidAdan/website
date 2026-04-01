@@ -172,7 +172,7 @@ export default function Editor() {
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        <aside className="w-64 overflow-hidden">
+        <aside className="overflow-visible shrink-0">
           <DocumentTree documents={documents} selectedId={docId} onSelect={handleSelectDoc} />
         </aside>
         <main className="flex-1 flex flex-col overflow-hidden">

@@ -1,7 +1,21 @@
-import { useCallback, useRef, useState, useEffect } from "react";
+import {
+  isBranchNode,
+  LazyTreeView,
+  type BranchProps,
+  type LazyTreeViewHandle,
+  type TreeNode,
+} from "lazy-tree-view";
+import {
+  ChevronDown,
+  ChevronRight,
+  FilePlus,
+  FileText,
+  FolderIcon,
+  FolderPlus,
+  Loader2,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useFetcher } from "react-router";
-import { LazyTreeView, type TreeNode, type BranchNode, isBranchNode, type LazyTreeViewHandle, type BranchProps } from "lazy-tree-view";
-import { FolderIcon, FileText, ChevronRight, ChevronDown, FilePlus, FolderPlus, Loader2, GripVertical } from "lucide-react";
 import { docsToTree, type DocRow } from "~/utils/documents";
 import { calculatePosition, getSiblings } from "~/utils/position";
 
@@ -16,7 +30,16 @@ interface Props {
   storageKey?: string;
 }
 
-export function DocumentTree({ documents, selectedId, onSelect, showHierarchyGuides = true, maxWidth = 400, defaultWidth = 256, minWidth = 200, storageKey = "document-tree-width" }: Props) {
+export function DocumentTree({
+  documents,
+  selectedId,
+  onSelect,
+  showHierarchyGuides = true,
+  maxWidth = 400,
+  defaultWidth = 256,
+  minWidth = 200,
+  storageKey = "document-tree-width",
+}: Props) {
   const tree = docsToTree(documents);
   const treeRef = useRef<LazyTreeViewHandle>(null);
   const fetcher = useFetcher();
@@ -37,7 +60,8 @@ export function DocumentTree({ documents, selectedId, onSelect, showHierarchyGui
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !containerRef.current) return;
-      const newWidth = e.clientX - containerRef.current.getBoundingClientRect().left;
+      const newWidth =
+        e.clientX - containerRef.current.getBoundingClientRect().left;
       const clampedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
       setWidth(clampedWidth);
     };
@@ -74,7 +98,11 @@ export function DocumentTree({ documents, selectedId, onSelect, showHierarchyGui
     if (!name) return;
     fetcher.submit(
       { name, parentId: parentId ?? "", isFolder: "false" },
-      { method: "POST", action: "/api/documents", encType: "application/x-www-form-urlencoded" },
+      {
+        method: "POST",
+        action: "/api/documents",
+        encType: "application/x-www-form-urlencoded",
+      },
     );
   };
 
@@ -83,7 +111,11 @@ export function DocumentTree({ documents, selectedId, onSelect, showHierarchyGui
     if (!name) return;
     fetcher.submit(
       { name, parentId: parentId ?? "", isFolder: "true" },
-      { method: "POST", action: "/api/documents", encType: "application/x-www-form-urlencoded" },
+      {
+        method: "POST",
+        action: "/api/documents",
+        encType: "application/x-www-form-urlencoded",
+      },
     );
   };
 
@@ -174,7 +206,11 @@ export function DocumentTree({ documents, selectedId, onSelect, showHierarchyGui
           folder
         </button>
       </div>
-      <div className="flex-1 overflow-auto p-2" data-tree-container data-show-guides={showHierarchyGuides}>
+      <div
+        className="flex-1 overflow-auto p-2"
+        data-tree-container
+        data-show-guides={showHierarchyGuides}
+      >
         {tree.length === 0 ? (
           <p className="text-xs text-gray-500 p-2">No documents yet</p>
         ) : (
@@ -194,42 +230,50 @@ export function DocumentTree({ documents, selectedId, onSelect, showHierarchyGui
               const sourceId = data.source.id;
               const targetId = data.target.id;
               const dropPos = data.position;
-              
+
               let targetParentId: string | null = null;
-              
+
               if (dropPos === "inside" && isBranchNode(data.target)) {
                 targetParentId = targetId;
               } else if (dropPos === "before" || dropPos === "after") {
-                const targetDoc = documents.find(d => d.id === targetId);
+                const targetDoc = documents.find((d) => d.id === targetId);
                 if (targetDoc) {
                   targetParentId = targetDoc.parentId;
                 }
               }
-              
-              const sourceDoc = documents.find(d => d.id === sourceId);
+
+              const sourceDoc = documents.find((d) => d.id === sourceId);
               if (!sourceDoc) return;
-              
+
               const siblings = getSiblings(documents, targetParentId, sourceId);
-              
+
               let insertIndex = siblings.length;
               if (dropPos === "before") {
-                const targetIndex = siblings.findIndex(s => s.id === targetId);
+                const targetIndex = siblings.findIndex(
+                  (s) => s.id === targetId,
+                );
                 if (targetIndex !== -1) insertIndex = targetIndex;
               } else if (dropPos === "after") {
-                const targetIndex = siblings.findIndex(s => s.id === targetId);
+                const targetIndex = siblings.findIndex(
+                  (s) => s.id === targetId,
+                );
                 if (targetIndex !== -1) insertIndex = targetIndex + 1;
               } else if (dropPos === "inside") {
                 insertIndex = 0;
               }
-              
+
               const newPosition = calculatePosition(siblings, insertIndex);
-              
+
               fetcher.submit(
-                { 
-                  parentId: targetParentId ?? "", 
-                  position: newPosition 
+                {
+                  parentId: targetParentId ?? "",
+                  position: newPosition,
                 },
-                { method: "PATCH", action: `/api/documents?id=${sourceId}`, encType: "application/x-www-form-urlencoded" },
+                {
+                  method: "PATCH",
+                  action: `/api/documents?id=${sourceId}`,
+                  encType: "application/x-www-form-urlencoded",
+                },
               );
             }}
           />
@@ -237,7 +281,7 @@ export function DocumentTree({ documents, selectedId, onSelect, showHierarchyGui
       </div>
       <div
         data-testid="resize-handle"
-        className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-black/20 dark:hover:bg-white/20 active:bg-black/30 dark:active:bg-white/30 transition-colors z-50 flex items-center justify-center group"
+        className="absolute right-0 top-0 bottom-0 w-0.5 bg-black/5 dark:bg-white/5 hover:bg-black/20 dark:hover:bg-white/20 active:bg-black/30 dark:active:bg-white/30 cursor-ew-resize transition-all z-50 flex items-center justify-center group"
         onMouseDown={(e) => {
           e.preventDefault();
           setIsResizing(true);
@@ -246,7 +290,7 @@ export function DocumentTree({ documents, selectedId, onSelect, showHierarchyGui
         aria-orientation="vertical"
         aria-label="Resize sidebar"
       >
-        <GripVertical className="w-3 h-3 text-black/40 dark:text-white/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="w-px h-8 bg-black/20 dark:bg-white/20 group-hover:bg-black/50 dark:group-hover:bg-white/50 transition-colors rounded-full" />
       </div>
     </div>
   );
