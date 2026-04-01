@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Form, Link, useLoaderData } from "react-router";
+import { Form, Link, useLoaderData, useParams } from "react-router";
 import { MilkdownEditor } from "~/components/MilkdownEditor";
-import {
-  loadSavedContent,
-  loadSavedMode,
-  saveMode,
-  useAutoSave,
-} from "~/hooks/useAutoSave";
-import { useSaveToDisk } from "~/hooks/useSaveToDisk";
+import { DocumentTree } from "~/components/DocumentTree";
 import { useTheme } from "~/hooks/useTheme";
 import { getEnv, requireSession } from "~/utils/auth.server";
 import type { Route } from "./+types/md";
@@ -22,11 +16,17 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 export default function Editor() {
   const { user } = useLoaderData<typeof loader>();
+  const params = useParams();
+  const docId = params.docId || null;
+  
   const { theme, toggle } = useTheme();
   const [value, setValue] = useState<string>("");
+  const [docName, setDocName] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
   const [view, setView] = useState<ViewMode>("raw");
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(docId);
   const contentRef = useRef<string>(value);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const wordCount = useMemo(() => {
     const words = value.trim().split(/\s+/);
@@ -35,23 +35,70 @@ export default function Editor() {
 
   contentRef.current = value;
 
-  useAutoSave(value);
-  useSaveToDisk(contentRef);
-
-  useEffect(() => {
-    Promise.all([loadSavedContent(), loadSavedMode()]).then(([saved, mode]) => {
-      if (saved !== null) setValue(saved);
-      setView(mode);
-      setLoaded(true);
-    });
+  const loadDocument = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/documents?id=${encodeURIComponent(id)}`);
+      if (res.ok) {
+        const doc = await res.json() as { content: string; name: string };
+        setValue(doc.content || "");
+        setDocName(doc.name);
+      }
+    } catch (e) {
+      console.error("Failed to load document:", e);
+    }
   }, []);
 
   useEffect(() => {
-    if (loaded) saveMode(view);
+    if (selectedDocId) {
+      loadDocument(selectedDocId).then(() => setLoaded(true));
+    } else {
+      setValue("");
+      setDocName("");
+      setLoaded(true);
+    }
+  }, [selectedDocId, loadDocument]);
+
+  const saveDocument = useCallback(async (content: string) => {
+    if (!selectedDocId) return;
+    try {
+      await fetch(`/api/documents?id=${encodeURIComponent(selectedDocId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+    } catch (e) {
+      console.error("Failed to save:", e);
+    }
+  }, [selectedDocId]);
+
+  useEffect(() => {
+    if (!loaded || !selectedDocId) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveDocument(value);
+    }, 1000);
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [value, loaded, selectedDocId, saveDocument]);
+
+  useEffect(() => {
+    if (loaded) {
+      localStorage.setItem("viewMode", view);
+    }
   }, [view, loaded]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("viewMode");
+    if (saved === "raw" || saved === "md") setView(saved);
+  }, []);
 
   const handleChange = useCallback((markdown: string) => {
     setValue(markdown);
+  }, []);
+
+  const handleSelectDoc = useCallback((id: string) => {
+    setSelectedDocId(id);
   }, []);
 
   if (!loaded) {
@@ -73,6 +120,9 @@ export default function Editor() {
         </Link>
 
         <div className="flex items-center gap-4">
+          {docName && (
+            <span className="text-sm font-mono">{docName}</span>
+          )}
           <div className="flex items-center gap-1 font-mono text-[11px] tracking-wider uppercase">
             {(["raw", "md"] as ViewMode[]).map((mode) => (
               <button
@@ -141,28 +191,39 @@ export default function Editor() {
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {view === "raw" ? (
-          <textarea
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="flex-1 p-4 font-mono text-sm resize-none bg-transparent outline-none"
-          />
-        ) : (
-          <MilkdownEditor
-            defaultValue={value}
-            onChange={handleChange}
-            className="flex-1 flex flex-col"
-          />
-        )}
-      </main>
+      <div className="flex-1 flex overflow-hidden">
+        <aside className="w-64 overflow-hidden">
+          <DocumentTree selectedId={selectedDocId} onSelect={handleSelectDoc} />
+        </aside>
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {selectedDocId ? (
+            view === "raw" ? (
+              <textarea
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                className="flex-1 p-4 font-mono text-sm resize-none bg-transparent outline-none"
+              />
+            ) : (
+              <MilkdownEditor
+                defaultValue={value}
+                onChange={handleChange}
+                className="flex-1 flex flex-col"
+              />
+            )
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-gray-500 font-mono text-sm">
+              Select a document to edit
+            </div>
+          )}
+        </main>
+      </div>
 
       <footer className="shrink-0 sticky bottom-0 bg-editor dark:bg-editor-dark flex items-center justify-between px-4 py-2 font-mono text-[10px] tracking-wider uppercase">
         <span>
           {wordCount.toLocaleString()} words · {value.length.toLocaleString()}{" "}
           chars
         </span>
-        <span>auto-saved</span>
+        {selectedDocId ? <span>auto-saved</span> : <span>-</span>}
         <span>ctrl+s → .md</span>
       </footer>
     </div>

@@ -28,15 +28,20 @@ type Pages = {
       "*": string;
     };
   };
-  "/md": {
+  "/api/documents": {
     params: {};
+  };
+  "/md/:docId?": {
+    params: {
+      "docId"?: string;
+    };
   };
 };
 
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/login" | "/signup" | "/logout" | "/api/auth/*" | "/md";
+    page: "/" | "/login" | "/signup" | "/logout" | "/api/auth/*" | "/api/documents" | "/md/:docId?";
   };
   "routes/home.tsx": {
     id: "routes/home";
@@ -58,9 +63,13 @@ type RouteFiles = {
     id: "routes/api.auth.$";
     page: "/api/auth/*";
   };
+  "routes/api.documents.ts": {
+    id: "routes/api.documents";
+    page: "/api/documents";
+  };
   "routes/md.tsx": {
     id: "routes/md";
-    page: "/md";
+    page: "/md/:docId?";
   };
 };
 
@@ -71,5 +80,6 @@ type RouteModules = {
   "routes/signup": typeof import("./app/routes/signup.tsx");
   "routes/logout": typeof import("./app/routes/logout.tsx");
   "routes/api.auth.$": typeof import("./app/routes/api.auth.$.ts");
+  "routes/api.documents": typeof import("./app/routes/api.documents.ts");
   "routes/md": typeof import("./app/routes/md.tsx");
 };

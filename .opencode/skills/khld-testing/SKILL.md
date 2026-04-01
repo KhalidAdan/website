@@ -52,10 +52,14 @@ app/
 │   ├── auth.server.ts
 │   ├── auth.server.spec.ts      # vitest - test loaders/actions
 │   ├── db.server.ts
-│   └── db.server.spec.ts        # vitest - test DB queries
+│   ├── db.server.spec.ts        # vitest - test DB queries
+│   ├── documents.ts
+│   └── documents.spec.ts        # vitest - test docsToTree
 ├── components/
 │   ├── MilkdownEditor.tsx
 │   └── MilkdownEditor.spec.tsx  # vitest - mock Crepe editor
+│   ├── DocumentTree.tsx
+│   └── DocumentTree.spec.tsx    # vitest + rtl - tree component
 ├── routes/
 │   ├── home.tsx
 │   ├── home.spec.tsx            # vitest + rtl
@@ -65,12 +69,15 @@ app/
 │   ├── signup.spec.tsx          # vitest + rtl - form tests
 │   ├── md.tsx
 │   ├── md.spec.tsx              # vitest + rtl - editor tests
+│   ├── api.documents.ts
+│   ├── api.documents.spec.ts    # vitest - test API endpoints
 │   └── logout.tsx
 tests/
 ├── e2e/
 │   ├── smoke.spec.ts            # playwright - all routes render
 │   ├── auth.spec.ts             # playwright - login/signup flows
-│   └── editor.spec.ts           # playwright - editor interactions
+│   ├── editor.spec.ts           # playwright - editor interactions
+│   └── documents.spec.ts        # playwright - document CRUD
 ├── setup/
 │   ├── vitest-setup.ts          # @testing-library/jest-dom setup
 │   └── mocks/
@@ -283,6 +290,189 @@ vi.mock('better-auth/react', () => ({
 }))
 ```
 
+### documents.ts utility
+
+Test the `docsToTree` function directly - no mocking needed:
+
+```typescript
+// app/utils/documents.spec.ts
+import { describe, expect, it } from 'vitest'
+import { docsToTree } from './documents'
+
+describe('docsToTree', () => {
+  it('returns empty tree for empty array', () => {
+    expect(docsToTree([])).toEqual([])
+  })
+
+  it('places documents at root level', () => {
+    const docs = [{ id: '1', userId: 'u1', parentId: null, name: 'test.md', content: '', isFolder: false, createdAt: new Date(), updatedAt: new Date() }]
+    const tree = docsToTree(docs)
+    expect(tree).toHaveLength(1)
+    expect(tree[0].name).toBe('test.md')
+  })
+
+  it('creates branch nodes for folders', () => {
+    const docs = [{ id: '1', userId: 'u1', parentId: null, name: 'folder', content: '', isFolder: true, createdAt: new Date(), updatedAt: new Date() }]
+    const tree = docsToTree(docs) as BranchNode[]
+    expect(tree).toHaveLength(1)
+    expect(tree[0].children).toEqual([])
+  })
+
+  it('sets hasChildren based on child existence', () => {
+    const docs = [
+      { id: '1', userId: 'u1', parentId: null, name: 'folder', content: '', isFolder: true, createdAt: new Date(), updatedAt: new Date() },
+      { id: '2', userId: 'u1', parentId: '1', name: 'doc.md', content: '', isFolder: false, createdAt: new Date(), updatedAt: new Date() },
+    ]
+    const tree = docsToTree(docs) as BranchNode[]
+    expect(tree[0].hasChildren).toBe(true)
+  })
+
+  it('handles empty folder with no children', () => {
+    const docs = [{ id: '1', userId: 'u1', parentId: null, name: 'empty-folder', content: '', isFolder: true, createdAt: new Date(), updatedAt: new Date() }]
+    const tree = docsToTree(docs) as BranchNode[]
+    expect(tree[0].hasChildren).toBe(false)
+  })
+
+  it('nests children under parent folders', () => {
+    const docs = [
+      { id: '1', userId: 'u1', parentId: null, name: 'folder', content: '', isFolder: true, createdAt: new Date(), updatedAt: new Date() },
+      { id: '2', userId: 'u1', parentId: '1', name: 'child.md', content: '', isFolder: false, createdAt: new Date(), updatedAt: new Date() },
+    ]
+    const tree = docsToTree(docs) as BranchNode[]
+    expect(tree[0].children).toHaveLength(1)
+    expect(tree[0].children[0].name).toBe('child.md')
+  })
+})
+```
+
+### DocumentTree Component (app/components/*.spec.tsx)
+
+Test component rendering with RTL:
+
+```typescript
+// app/components/DocumentTree.spec.tsx
+import { describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { DocumentTree } from './DocumentTree'
+
+vi.mock('lazy-tree-view', () => ({
+  LazyTreeView: ({ branch, item, initialTree }: any) => (
+    <div data-testid="tree">
+      {initialTree.map((node: any) => (
+        <div key={node.id} data-testid={`node-${node.id}`}>
+          {node.name}
+        </div>
+      ))}
+    </div>
+  ),
+}))
+
+describe('DocumentTree', () => {
+  it('renders loading state', () => {
+    render(<DocumentTree selectedId={null} onSelect={() => {}} />)
+    expect(screen.getByText(/loading/i)).toBeInTheDocument()
+  })
+
+  it('renders empty state when no documents', () => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve([]),
+    })))
+    render(<DocumentTree selectedId={null} onSelect={() => {}} />)
+    expect(screen.getByText(/no documents/i)).toBeInTheDocument()
+  })
+
+  it('calls onSelect when document clicked', async () => {
+    const onSelect = vi.fn()
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve([
+        { id: '1', userId: 'u1', parentId: null, name: 'test.md', content: '', isFolder: false, createdAt: new Date(), updatedAt: new Date() },
+      ]),
+    })))
+    render(<DocumentTree selectedId={null} onSelect={onSelect} />)
+    // Click would trigger through LazyTreeView renderItem
+  })
+})
+```
+
+### API Routes (app/routes/api.documents.spec.ts)
+
+Test API endpoints - need to mock auth and DB:
+
+```typescript
+// app/routes/api.documents.spec.ts
+import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { getDb } from '~/utils/db.server'
+
+vi.mock('~/utils/db.server', () => ({
+  getDb: vi.fn(),
+}))
+
+vi.mock('~/utils/auth.server', () => ({
+  getSession: vi.fn(),
+  getEnv: vi.fn(() => ({})),
+}))
+
+describe('GET /api/documents', () => {
+  it('returns 401 if not authenticated', async () => {
+    const { getSession } = await import('~/utils/auth.server')
+    vi.mocked(getSession).mockResolvedValue(null)
+    
+    // Create mock request and call loader
+    const request = new Request('http://localhost/api/documents')
+    // ... test response
+  })
+
+  it('returns user documents', async () => {
+    const mockDoc = { id: '1', userId: 'u1', name: 'test.md', content: '', isFolder: false }
+    vi.mocked(getDb).mockReturnValue({
+      query: {
+        document: {
+          findMany: vi.fn().mockResolvedValue([mockDoc]),
+        },
+      },
+    } as any)
+    
+    // ... test returns documents
+  })
+})
+
+describe('POST /api/documents', () => {
+  it('creates a new document', async () => {
+    // Mock DB insert
+    // Send POST with { name, isFolder }
+    // Expect returns created document with id
+  })
+
+  it('returns 400 if name missing', async () => {
+    // Send POST without name
+    // Expect 400 error
+  })
+})
+
+describe('PATCH /api/documents', () => {
+  it('updates document content', async () => {
+    // Mock DB update
+    // Send PATCH with content
+    // Expect returns updated document
+  })
+
+  it('updates document name', async () => {
+    // Send PATCH with name
+    // Expect returns updated document
+  })
+})
+
+describe('DELETE /api/documents', () => {
+  it('deletes document', async () => {
+    // Mock DB delete
+    // Send DELETE
+    // Expect success
+  })
+})
+```
+
 ### Routes (app/routes/*.spec.tsx)
 
 Use @testing-library/react for component tests:
@@ -324,6 +514,80 @@ test('user can log in', async ({ page }) => {
 })
 ```
 
+### E2E: Documents (tests/e2e/documents.spec.ts)
+
+```typescript
+// tests/e2e/documents.spec.ts
+import { expect, test } from '@playwright/test'
+
+test('user can create a document', async ({ page }) => {
+  await page.goto('/md')
+  await page.getByRole('button', { name: /doc/i }).click()
+  // Handle prompt
+  await page.evaluate(() => {
+    window.prompt = () => 'My New Doc'
+  })
+  await page.getByRole('button', { name: /doc/i }).click()
+  // Document should appear in tree
+  await expect(page.getByText('My New Doc')).toBeVisible()
+})
+
+test('user can create a folder', async ({ page }) => {
+  await page.goto('/md')
+  await page.evaluate(() => {
+    window.prompt = () => 'My Folder'
+  })
+  await page.getByRole('button', { name: /folder/i }).click()
+  await expect(page.getByText('My Folder')).toBeVisible()
+})
+
+test('selecting document loads content', async ({ page }) => {
+  // Create doc first
+  await page.goto('/md')
+  await page.evaluate(() => { window.prompt = () => 'Test Doc' })
+  await page.getByRole('button', { name: /doc/i }).click()
+  
+  // Wait for tree to load
+  await page.waitForSelector('text=Test Doc')
+  
+  // Click on document
+  await page.getByText('Test Doc').click()
+  
+  // Content should be loaded (check via UI state)
+})
+
+test('empty folder displays in tree', async ({ page }) => {
+  await page.goto('/md')
+  await page.evaluate(() => { window.prompt = () => 'Empty Folder' })
+  await page.getByRole('button', { name: /folder/i }).click()
+  
+  await expect(page.getByText('Empty Folder')).toBeVisible()
+})
+
+test('auto-save persists to database', async ({ page }) => {
+  // Create document
+  await page.goto('/md')
+  await page.evaluate(() => { window.prompt = () => 'Save Test' })
+  await page.getByRole('button', { name: /doc/i }).click()
+  await page.waitForSelector('text=Save Test')
+  await page.getByText('Save Test').click()
+  
+  // Type in editor
+  const textarea = page.locator('textarea')
+  await textarea.fill('# Hello World')
+  
+  // Wait for auto-save (debounced 1s)
+  await page.waitForTimeout(1500)
+  
+  // Reload page
+  await page.reload()
+  
+  // Document should have saved content
+  await page.getByText('Save Test').click()
+  await expect(textarea).toHaveValue('# Hello World')
+})
+```
+
 ## Test Coverage Matrix
 
 | Area | Unit | E2E Smoke | E2E Critical |
@@ -340,6 +604,15 @@ test('user can log in', async ({ page }) => {
 | Auto-save | ✓ | - | ✓ |
 | Save to disk | ✓ | - | - |
 | Word count | ✓ | ✓ | - |
+| docsToTree utility | ✓ | - | - |
+| DocumentTree component | ✓ | - | - |
+| Document API (GET list) | ✓ | ✓ | - |
+| Document API (GET single) | ✓ | - | - |
+| Document API (CREATE) | ✓ | ✓ | ✓ |
+| Document API (UPDATE) | ✓ | - | ✓ |
+| Document API (DELETE) | ✓ | - | - |
+| Document selection | - | ✓ | ✓ |
+| Auto-save to DB | - | - | ✓ |
 
 ## Common Mistakes to Avoid
 
