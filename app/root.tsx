@@ -7,7 +7,7 @@ import {
   useLoaderData,
 } from "react-router";
 import stylesheet from "~/app.css?url";
-import { ThemeProvider } from "~/hooks/useTheme";
+import { ThemeProvider, getThemeScript } from "~/hooks/useTheme";
 import { getEnv, getSession } from "~/utils/auth.server";
 import type { Route } from "./+types/root";
 
@@ -49,6 +49,7 @@ export default function Root() {
         <Meta />
         <Links />
         <title>khld.dev</title>
+        <script dangerouslySetInnerHTML={{ __html: getThemeScript() }} />
       </head>
       <body>
         <ThemeProvider>

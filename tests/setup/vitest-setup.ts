@@ -64,6 +64,29 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
+let cookieStore = new Map<string, string>();
+Object.defineProperty(document, "cookie", {
+  get: () => {
+    const cookies: string[] = [];
+    cookieStore.forEach((value, key) => {
+      cookies.push(`${key}=${value}`);
+    });
+    return cookies.join("; ");
+  },
+  set: (cookie: string) => {
+    const [keyValue] = cookie.split(";");
+    if (!keyValue) return;
+    const [key, value] = keyValue.split("=");
+    if (!key || !value) return;
+    cookieStore.set(key.trim(), value.trim());
+  },
+  configurable: true,
+});
+
+beforeEach(() => {
+  cookieStore.clear();
+});
+
 vi.mock("better-auth/react", () => ({
   createAuthClient: vi.fn(() => ({
     useSession: vi.fn(),
