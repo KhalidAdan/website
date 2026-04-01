@@ -78,7 +78,7 @@ export default function Editor() {
               <button
                 key={mode}
                 onClick={() => setView(mode)}
-                className={`px-2 py-1 rounded cursor-pointer transition-colors hover:bg-accent hover:text-white`}
+                className={`px-2 py-1 rounded cursor-pointer transition-colors hover:bg-accent hover:text-white uppercase`}
               >
                 {mode}
               </button>
@@ -158,7 +158,10 @@ export default function Editor() {
       </main>
 
       <footer className="flex items-center justify-between px-4 py-2 font-mono text-[10px] tracking-wider uppercase">
-        <span>{wordCount.toLocaleString()} words · {value.length.toLocaleString()} chars</span>
+        <span>
+          {wordCount.toLocaleString()} words · {value.length.toLocaleString()}{" "}
+          chars
+        </span>
         <span>auto-saved</span>
         <span>ctrl+s → .md</span>
       </footer>
