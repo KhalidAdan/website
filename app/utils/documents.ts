@@ -5,7 +5,7 @@ export interface DocRow {
   userId: string;
   parentId: string | null;
   name: string;
-  content: string;
+  content: string | null;
   isFolder: boolean;
   createdAt: Date;
   updatedAt: Date;

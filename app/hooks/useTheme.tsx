@@ -1,11 +1,5 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useCallback, type ReactNode } from "react";
+import { useLocalStorage } from "./useLocalStorage";
 
 type Theme = "light" | "dark";
 
@@ -23,26 +17,36 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
-function getInitial(): Theme {
+function getSystemDefault(): Theme {
   if (typeof window === "undefined") return "light";
-  const stored = localStorage.getItem("theme") as Theme | null;
-  if (stored === "light" || stored === "dark") return stored;
   return window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light";
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(getInitial);
-
-  useEffect(() => {
+/** Apply the theme class to <html>. Called on toggle and once at module load. */
+function applyTheme(theme: Theme) {
+  if (typeof document !== "undefined") {
     document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("theme", theme);
-  }, [theme]);
+  }
+}
+
+// Apply immediately at module load to avoid FOUC
+if (typeof window !== "undefined") {
+  const stored = localStorage.getItem("theme");
+  applyTheme(stored === "light" || stored === "dark" ? stored : getSystemDefault());
+}
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, setTheme] = useLocalStorage<Theme>("theme", getSystemDefault());
 
   const toggle = useCallback(() => {
-    setTheme((t) => (t === "light" ? "dark" : "light"));
-  }, []);
+    setTheme((t) => {
+      const next = t === "light" ? "dark" : "light";
+      applyTheme(next);
+      return next;
+    });
+  }, [setTheme]);
 
   return (
     <ThemeContext.Provider value={{ theme, toggle }}>

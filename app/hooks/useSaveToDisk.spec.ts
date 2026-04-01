@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import * as idbKeyval from "idb-keyval";
 import { useSaveToDisk } from "./useSaveToDisk";
 
 describe("useSaveToDisk", () => {
@@ -10,7 +9,6 @@ describe("useSaveToDisk", () => {
   beforeEach(() => {
     addEventListenerSpy = vi.spyOn(document, "addEventListener");
     removeEventListenerSpy = vi.spyOn(document, "removeEventListener");
-    vi.spyOn(idbKeyval, "set").mockImplementation(() => Promise.resolve());
   });
 
   afterEach(() => {

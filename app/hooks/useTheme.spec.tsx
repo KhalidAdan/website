@@ -44,7 +44,7 @@ describe("useTheme", () => {
   });
 
   it("initializes from localStorage", () => {
-    vi.mocked(window.localStorage.getItem).mockReturnValue("dark");
+    window.localStorage.setItem("theme", "dark");
 
     const { result } = renderHook(() => useTheme(), {
       wrapper: ThemeProvider,

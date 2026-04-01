@@ -1,31 +1,62 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Form, Link, useLoaderData, useParams } from "react-router";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { Form, Link, useLoaderData, useNavigate, useParams } from "react-router";
+import { eq, desc, and } from "drizzle-orm";
 import { MilkdownEditor } from "~/components/MilkdownEditor";
 import { DocumentTree } from "~/components/DocumentTree";
 import { useTheme } from "~/hooks/useTheme";
+import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { getEnv, requireSession } from "~/utils/auth.server";
+import { getDb } from "~/utils/db.server";
+import { document } from "~/db/schema";
 import type { Route } from "./+types/md";
 
 type ViewMode = "raw" | "md";
 
-export async function loader({ request, context }: Route.LoaderArgs) {
+export async function loader({ request, context, params }: Route.LoaderArgs) {
   const env = getEnv(context);
   const { user } = await requireSession(request, env);
-  return { user: { id: user.id, name: user.name, email: user.email } };
+  const db = getDb(env.DB);
+
+  const docs = await db.query.document.findMany({
+    where: eq(document.userId, user.id),
+    orderBy: [desc(document.isFolder), document.name],
+  });
+
+  let selectedDoc = null;
+  if (params.docId) {
+    selectedDoc =
+      docs.find((d) => d.id === params.docId) ??
+      (await db.query.document.findFirst({
+        where: and(eq(document.id, params.docId), eq(document.userId, user.id)),
+      })) ??
+      null;
+  }
+
+  return {
+    user: { id: user.id, name: user.name, email: user.email },
+    documents: docs,
+    selectedDoc,
+  };
 }
 
 export default function Editor() {
-  const { user } = useLoaderData<typeof loader>();
+  const { user, documents, selectedDoc } = useLoaderData<typeof loader>();
   const params = useParams();
   const docId = params.docId || null;
-  
+  const navigate = useNavigate();
   const { theme, toggle } = useTheme();
-  const [value, setValue] = useState<string>("");
-  const [docName, setDocName] = useState<string>("");
-  const [loaded, setLoaded] = useState(false);
-  const [view, setView] = useState<ViewMode>("raw");
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(docId);
-  const contentRef = useRef<string>(value);
+  const [view, setView] = useLocalStorage<ViewMode>("viewMode", "raw");
+
+  // Editor state — reset when the active document changes
+  const [value, setValue] = useState(selectedDoc?.content || "");
+  const [prevDocId, setPrevDocId] = useState(docId);
+  if (docId !== prevDocId) {
+    setPrevDocId(docId);
+    setValue(selectedDoc?.content || "");
+  }
+
+  const docName = selectedDoc?.name || "";
+
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const wordCount = useMemo(() => {
@@ -33,83 +64,33 @@ export default function Editor() {
     return words[0] === "" ? 0 : words.length;
   }, [value]);
 
-  contentRef.current = value;
-
-  const loadDocument = useCallback(async (id: string) => {
-    try {
-      const res = await fetch(`/api/documents?id=${encodeURIComponent(id)}`);
-      if (res.ok) {
-        const doc = await res.json() as { content: string; name: string };
-        setValue(doc.content || "");
-        setDocName(doc.name);
-      }
-    } catch (e) {
-      console.error("Failed to load document:", e);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (selectedDocId) {
-      setLoaded(false);
-      loadDocument(selectedDocId).then(() => setLoaded(true));
-    } else {
-      setValue("");
-      setDocName("");
-      setLoaded(true);
-    }
-  }, [selectedDocId, loadDocument]);
-
-  const saveDocument = useCallback(async (content: string) => {
-    if (!selectedDocId) return;
-    try {
-      await fetch(`/api/documents?id=${encodeURIComponent(selectedDocId)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-      });
-    } catch (e) {
-      console.error("Failed to save:", e);
-    }
-  }, [selectedDocId]);
-
-  useEffect(() => {
-    if (!loaded || !selectedDocId) return;
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      saveDocument(value);
-    }, 1000);
-    return () => {
+  // Debounced auto-save — lives in the event handler, not an effect
+  const handleChange = useCallback(
+    (markdown: string) => {
+      setValue(markdown);
+      if (!docId) return;
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    };
-  }, [value, loaded, selectedDocId, saveDocument]);
+      const id = docId;
+      saveTimeoutRef.current = setTimeout(() => {
+        fetch(`/api/documents?id=${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: markdown }),
+        }).catch((e) => console.error("Failed to save:", e));
+      }, 1000);
+    },
+    [docId],
+  );
 
-  useEffect(() => {
-    if (loaded) {
-      localStorage.setItem("viewMode", view);
-    }
-  }, [view, loaded]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("viewMode");
-    if (saved === "raw" || saved === "md") setView(saved);
-  }, []);
-
-  const handleChange = useCallback((markdown: string) => {
-    setValue(markdown);
-  }, []);
-
-  const handleSelectDoc = useCallback((id: string) => {
-    setSelectedDocId(id);
-    setView("md");
-  }, []);
-
-  if (!loaded) {
-    return (
-      <div className="min-h-dvh flex items-center justify-center">
-        <span className="font-mono text-xs animate-pulse">loading…</span>
-      </div>
-    );
-  }
+  const handleSelectDoc = useCallback(
+    (id: string) => {
+      // Clear any pending save for the previous doc
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      setView("md");
+      navigate(`/md/${id}`);
+    },
+    [navigate, setView],
+  );
 
   return (
     <div className="min-h-dvh flex flex-col" data-color-mode={theme}>
@@ -192,18 +173,19 @@ export default function Editor() {
 
       <div className="flex-1 flex overflow-hidden">
         <aside className="w-64 overflow-hidden">
-          <DocumentTree selectedId={selectedDocId} onSelect={handleSelectDoc} />
+          <DocumentTree documents={documents} selectedId={docId} onSelect={handleSelectDoc} />
         </aside>
         <main className="flex-1 flex flex-col overflow-hidden">
-          {selectedDocId ? (
+          {docId && selectedDoc ? (
             view === "raw" ? (
               <textarea
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
+                onChange={(e) => handleChange(e.target.value)}
                 className="flex-1 p-4 font-mono text-sm resize-none bg-transparent outline-none"
               />
             ) : (
               <MilkdownEditor
+                key={docId}
                 defaultValue={value}
                 onChange={handleChange}
                 className="flex-1 flex flex-col"
@@ -222,7 +204,7 @@ export default function Editor() {
           {wordCount.toLocaleString()} words · {value.length.toLocaleString()}{" "}
           chars
         </span>
-        {selectedDocId ? <span>auto-saved</span> : <span>-</span>}
+        {docId ? <span>auto-saved</span> : <span>-</span>}
         <span>ctrl+s → .md</span>
       </footer>
     </div>

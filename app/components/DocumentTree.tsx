@@ -1,35 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
+import { useFetcher } from "react-router";
 import { LazyTreeView, type TreeNode, type BranchNode, isBranchNode, type LazyTreeViewHandle } from "lazy-tree-view";
 import { FolderIcon, FileText, ChevronRight, ChevronDown, FilePlus, FolderPlus } from "lucide-react";
-import { docsToTree } from "~/utils/documents";
+import { docsToTree, type DocRow } from "~/utils/documents";
 
 interface Props {
+  documents: DocRow[];
   selectedId: string | null;
   onSelect: (id: string) => void;
 }
 
-export function DocumentTree({ selectedId, onSelect }: Props) {
-  const [tree, setTree] = useState<TreeNode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function DocumentTree({ documents, selectedId, onSelect }: Props) {
+  const tree = docsToTree(documents);
   const treeRef = useRef<LazyTreeViewHandle>(null);
-
-  const loadDocuments = useCallback(async () => {
-    try {
-      const res = await fetch("/api/documents");
-      if (!res.ok) throw new Error("Failed to load");
-      const docs = await res.json();
-      setTree(docsToTree(docs));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadDocuments();
-  }, [loadDocuments]);
+  const fetcher = useFetcher();
 
   const handleSelect = useCallback(
     (node: TreeNode) => {
@@ -37,37 +21,29 @@ export function DocumentTree({ selectedId, onSelect }: Props) {
         onSelect(node.id);
       }
     },
-    [onSelect]
+    [onSelect],
   );
 
   const handleCreateDoc = async (parentId: string | null = null) => {
     const name = prompt("Document name:");
     if (!name) return;
-    const res = await fetch("/api/documents", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, parentId, isFolder: false }),
-    });
-    if (res.ok) loadDocuments();
+    fetcher.submit(
+      { name, parentId: parentId ?? "", isFolder: false },
+      { method: "POST", action: "/api/documents", encType: "application/json" },
+    );
   };
 
   const handleCreateFolder = async (parentId: string | null = null) => {
     const name = prompt("Folder name:");
     if (!name) return;
-    const res = await fetch("/api/documents", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, parentId, isFolder: true }),
-    });
-    if (res.ok) loadDocuments();
+    fetcher.submit(
+      { name, parentId: parentId ?? "", isFolder: true },
+      { method: "POST", action: "/api/documents", encType: "application/json" },
+    );
   };
 
-  if (loading) {
-    return <div className="p-4 text-xs font-mono">loading...</div>;
-  }
-
-  if (error) {
-    return <div className="p-4 text-xs font-mono text-red-500">{error}</div>;
+  if (fetcher.state !== "idle") {
+    // Show subtle loading state while mutation is in-flight
   }
 
   const renderItem = (node: TreeNode) => {

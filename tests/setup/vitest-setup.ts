@@ -1,24 +1,48 @@
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import { vi, beforeEach } from "vitest";
+
+/** Creates a functional localStorage/sessionStorage mock backed by a Map. */
+function createStorageMock() {
+  const store = new Map<string, string>();
+  return {
+    getItem: vi.fn((key: string) => store.get(key) ?? null),
+    setItem: vi.fn((key: string, value: string) => {
+      store.set(key, String(value));
+    }),
+    removeItem: vi.fn((key: string) => {
+      store.delete(key);
+    }),
+    clear: vi.fn(() => {
+      store.clear();
+    }),
+    _store: store,
+  };
+}
+
+const localStorageMock = createStorageMock();
+const sessionStorageMock = createStorageMock();
 
 Object.defineProperty(window, "localStorage", {
-  value: {
-    getItem: vi.fn(),
-    setItem: vi.fn(),
-    removeItem: vi.fn(),
-    clear: vi.fn(),
-  },
+  value: localStorageMock,
   writable: true,
 });
 
 Object.defineProperty(window, "sessionStorage", {
-  value: {
-    getItem: vi.fn(),
-    setItem: vi.fn(),
-    removeItem: vi.fn(),
-    clear: vi.fn(),
-  },
+  value: sessionStorageMock,
   writable: true,
+});
+
+beforeEach(() => {
+  localStorageMock._store.clear();
+  localStorageMock.getItem.mockClear();
+  localStorageMock.setItem.mockClear();
+  localStorageMock.removeItem.mockClear();
+  localStorageMock.clear.mockClear();
+  sessionStorageMock._store.clear();
+  sessionStorageMock.getItem.mockClear();
+  sessionStorageMock.setItem.mockClear();
+  sessionStorageMock.removeItem.mockClear();
+  sessionStorageMock.clear.mockClear();
 });
 
 Object.defineProperty(document, "visibilityState", {
@@ -39,16 +63,6 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: vi.fn(),
   })),
 });
-
-vi.mock("idb-keyval", () => ({
-  get: vi.fn(),
-  set: vi.fn(),
-  del: vi.fn(),
-  clear: vi.fn(),
-  keys: vi.fn().mockResolvedValue([]),
-  values: vi.fn().mockResolvedValue([]),
-  entries: vi.fn().mockResolvedValue([]),
-}));
 
 vi.mock("better-auth/react", () => ({
   createAuthClient: vi.fn(() => ({
