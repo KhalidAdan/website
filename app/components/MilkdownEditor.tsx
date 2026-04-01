@@ -27,6 +27,7 @@ function EditorInner({ defaultValue, onChange, readonly }: Omit<Props, "classNam
       root: editorRef.current,
       defaultValue,
       features: {
+        [CrepeFeature.CodeMirror]: true,
         [CrepeFeature.Toolbar]: false,
         [CrepeFeature.BlockEdit]: false,
         [CrepeFeature.TopBar]: false,

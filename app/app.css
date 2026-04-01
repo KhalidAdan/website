@@ -1,6 +1,45 @@
 @import "tailwindcss";
 @import "@milkdown/crepe/theme/nord.css";
+@import "@milkdown/crepe/theme/nord-dark.css";
+@import "@milkdown/crepe/theme/common/style.css";
 @plugin "@tailwindcss/typography";
+
+.milkdown,
+:root {
+  --crepe-color-background: #fdfcff;
+  --crepe-color-on-background: #1b1c1d;
+  --crepe-color-surface: #f8f9ff;
+  --crepe-color-surface-low: #f2f3fa;
+  --crepe-color-on-surface: #191c20;
+  --crepe-color-on-surface-variant: #43474e;
+  --crepe-color-outline: #73777f;
+  --crepe-color-primary: #37618e;
+  --crepe-color-secondary: #d7e3f8;
+  --crepe-color-on-secondary: #101c2b;
+  --crepe-color-hover: #eceef4;
+  --crepe-color-selected: #e1e2e8;
+}
+
+.dark .milkdown,
+.milkdown.dark,
+html.dark .milkdown,
+[data-color-mode="dark"] .milkdown,
+.dark,
+html.dark,
+[data-color-mode="dark"] {
+  --crepe-color-background: #1b1c1d;
+  --crepe-color-on-background: #f8f9ff;
+  --crepe-color-surface: #111418;
+  --crepe-color-surface-low: #191c20;
+  --crepe-color-on-surface: #e1e2e8;
+  --crepe-color-on-surface-variant: #c3c6cf;
+  --crepe-color-outline: #8d9199;
+  --crepe-color-primary: #a1c9fd;
+  --crepe-color-secondary: #3c4858;
+  --crepe-color-on-secondary: #d7e3f8;
+  --crepe-color-hover: #1d2024;
+  --crepe-color-selected: #32353a;
+}
 
 @theme {
   --font-sans: "Instrument Sans", system-ui, sans-serif;
@@ -28,15 +67,15 @@ html {
 
 body {
   margin: 0;
-  background: #fafaf9;
-  color: #1c1917;
+  background: var(--crepe-color-background);
+  color: var(--crepe-color-on-background);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .dark body,
 body.dark {
-  background: #0c0c0c;
-  color: #e7e5e4;
+  background: var(--crepe-color-background);
+  color: var(--crepe-color-on-background);
 }
 
 /*
@@ -53,6 +92,8 @@ body.dark {
   flex: 1;
   display: flex;
   flex-direction: column;
+  background: var(--crepe-color-background);
+  color: var(--crepe-color-on-background);
 }
 
 /*
@@ -70,6 +111,8 @@ body.dark {
   font-size: 1rem;
   line-height: 1.75;
   white-space: normal;
+  background: var(--crepe-color-background);
+  color: var(--crepe-color-on-background);
 }
 
 .milkdown .editor h1,
