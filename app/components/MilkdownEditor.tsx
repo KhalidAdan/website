@@ -1,5 +1,6 @@
-import { Crepe } from "@milkdown/crepe";
+import { Crepe, CrepeFeature } from "@milkdown/crepe";
 import { ListenerManager } from "@milkdown/kit/plugin/listener";
+import { codeMirror } from "@milkdown/crepe/feature/code-mirror";
 import { useEffect, useRef } from "react";
 
 interface Props {
@@ -25,7 +26,12 @@ function EditorInner({ defaultValue, onChange, readonly }: Omit<Props, "classNam
     const crepe = new Crepe({
       root: editorRef.current,
       defaultValue,
-    });
+      features: {
+        [CrepeFeature.Toolbar]: false,
+        [CrepeFeature.BlockEdit]: false,
+        [CrepeFeature.TopBar]: false,
+      },
+    }).addFeature(codeMirror);
 
     crepeRef.current = crepe;
 
