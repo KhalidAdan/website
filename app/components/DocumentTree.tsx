@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useFetcher } from "react-router";
 import { LazyTreeView, type TreeNode, type BranchNode, isBranchNode, type LazyTreeViewHandle, type BranchProps } from "lazy-tree-view";
-import { FolderIcon, FileText, ChevronRight, ChevronDown, FilePlus, FolderPlus } from "lucide-react";
+import { FolderIcon, FileText, ChevronRight, ChevronDown, FilePlus, FolderPlus, Loader2 } from "lucide-react";
 import { docsToTree, type DocRow } from "~/utils/documents";
 import { calculatePosition, getSiblings } from "~/utils/position";
 
@@ -83,7 +83,9 @@ export function DocumentTree({ documents, selectedId, onSelect }: Props) {
             }}
             className="cursor-pointer"
           >
-            {node.isOpen ? (
+            {node.isLoading ? (
+              <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
+            ) : node.isOpen ? (
               <ChevronDown className="w-4 h-4 shrink-0" />
             ) : (
               <ChevronRight className="w-4 h-4 shrink-0" />
