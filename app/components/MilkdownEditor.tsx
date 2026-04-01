@@ -30,11 +30,11 @@ function EditorInner({ defaultValue, onChange, readonly }: Omit<Props, "classNam
 
   const editorRef = useRef<HTMLDivElement>(null);
   const crepeRef = useRef<Crepe | null>(null);
-  const loadedRef = useRef(false);
 
   useEffect(() => {
-    if (loadedRef.current || typeof window === "undefined") return;
-    loadedRef.current = true;
+    if (typeof window === "undefined") return;
+
+    let cancelled = false;
 
     async function init() {
       const [{ languages: langs }, { codeMirror }] = await Promise.all([
@@ -42,11 +42,11 @@ function EditorInner({ defaultValue, onChange, readonly }: Omit<Props, "classNam
         import("@milkdown/crepe/feature/code-mirror"),
       ]);
 
+      if (cancelled || !editorRef.current) return;
+
       const filtered = langs.filter((lang: LanguageDescription) =>
         SUPPORTED_LANGUAGE_NAMES.includes(lang.name.toLowerCase())
       );
-
-      if (!editorRef.current) return;
 
       const crepe = new Crepe({
         root: editorRef.current,
@@ -59,22 +59,35 @@ function EditorInner({ defaultValue, onChange, readonly }: Omit<Props, "classNam
         },
       }).addFeature(codeMirror, { languages: filtered, theme: mutedCodeMirrorTheme });
 
-      crepeRef.current = crepe;
-
       crepe.on((api: ListenerManager) => {
         api.markdownUpdated((_ctx, markdown) => {
           onChangeRef.current?.(markdown);
         });
       });
 
-      crepe.create().then(() => {
-        if (readonlyRef.current) {
-          crepe.setReadonly(true);
-        }
-      });
+      await crepe.create();
+
+      if (cancelled) {
+        crepe.destroy();
+        return;
+      }
+
+      crepeRef.current = crepe;
+
+      if (readonlyRef.current) {
+        crepe.setReadonly(true);
+      }
     }
 
     init();
+
+    return () => {
+      cancelled = true;
+      if (crepeRef.current) {
+        crepeRef.current.destroy();
+        crepeRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {

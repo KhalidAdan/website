@@ -50,6 +50,7 @@ export default function Editor() {
 
   useEffect(() => {
     if (selectedDocId) {
+      setLoaded(false);
       loadDocument(selectedDocId).then(() => setLoaded(true));
     } else {
       setValue("");
@@ -99,6 +100,7 @@ export default function Editor() {
 
   const handleSelectDoc = useCallback((id: string) => {
     setSelectedDocId(id);
+    setView("md");
   }, []);
 
   if (!loaded) {
@@ -120,9 +122,6 @@ export default function Editor() {
         </Link>
 
         <div className="flex items-center gap-4">
-          {docName && (
-            <span className="text-sm font-mono">{docName}</span>
-          )}
           <div className="flex items-center gap-1 font-mono text-[11px] tracking-wider uppercase">
             {(["raw", "md"] as ViewMode[]).map((mode) => (
               <button
