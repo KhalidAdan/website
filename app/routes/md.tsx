@@ -157,7 +157,7 @@ export default function Editor() {
         )}
       </main>
 
-      <footer className="flex items-center justify-between px-4 py-2 font-mono text-[10px] tracking-wider uppercase">
+      <footer className="shrink-0 sticky bottom-0 bg-editor dark:bg-editor-dark flex items-center justify-between px-4 py-2 font-mono text-[10px] tracking-wider uppercase">
         <span>
           {wordCount.toLocaleString()} words · {value.length.toLocaleString()}{" "}
           chars
