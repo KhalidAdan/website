@@ -24,8 +24,8 @@ vi.mock("lazy-tree-view", () => ({
 
 const now = new Date();
 const mockDocs: DocRow[] = [
-  { id: "1", userId: "u1", parentId: null, name: "test.md", content: "hello", isFolder: false, createdAt: now, updatedAt: now },
-  { id: "2", userId: "u1", parentId: null, name: "folder", content: "", isFolder: true, createdAt: now, updatedAt: now },
+  { id: "1", userId: "u1", parentId: null, name: "test.md", content: "hello", isFolder: false, position: null, createdAt: now, updatedAt: now },
+  { id: "2", userId: "u1", parentId: null, name: "folder", content: "", isFolder: true, position: null, createdAt: now, updatedAt: now },
 ];
 
 describe("DocumentTree", () => {
@@ -62,8 +62,8 @@ describe("DocumentTree", () => {
     await user.click(screen.getByRole("button", { name: /doc/i }));
 
     expect(mockSubmit).toHaveBeenCalledWith(
-      { name: "New Doc", parentId: "", isFolder: false },
-      expect.objectContaining({ method: "POST", action: "/api/documents" }),
+      { name: "New Doc", parentId: "", isFolder: "false" },
+      { action: "/api/documents", encType: "application/x-www-form-urlencoded", method: "POST" },
     );
   });
 
@@ -74,8 +74,8 @@ describe("DocumentTree", () => {
     await user.click(screen.getByRole("button", { name: /folder/i }));
 
     expect(mockSubmit).toHaveBeenCalledWith(
-      { name: "New Doc", parentId: "", isFolder: true },
-      expect.objectContaining({ method: "POST", action: "/api/documents" }),
+      { name: "New Doc", parentId: "", isFolder: "true" },
+      { action: "/api/documents", encType: "application/x-www-form-urlencoded", method: "POST" },
     );
   });
 });

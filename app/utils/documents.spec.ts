@@ -9,6 +9,7 @@ const createDoc = (partial: Partial<DocRow> & { id: string; name: string; isFold
   name: partial.name,
   content: partial.content ?? '',
   isFolder: partial.isFolder,
+  position: partial.position ?? null,
   createdAt: partial.createdAt ?? new Date(),
   updatedAt: partial.updatedAt ?? new Date(),
 });

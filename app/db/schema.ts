@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 
 export const user = sqliteTable("user", {
@@ -66,6 +66,7 @@ export const document = sqliteTable("document", {
   name: text("name").notNull(),
   content: text("content").default(""),
   isFolder: integer("is_folder", { mode: "boolean" }).notNull().default(false),
+  position: real("position"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });

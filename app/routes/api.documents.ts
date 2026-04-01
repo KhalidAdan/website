@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, asc, sql, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getDb } from "~/utils/db.server";
 import { document } from "~/db/schema";
@@ -13,6 +13,7 @@ export async function loader({ request, context }: { request: Request; context: 
 
   const url = new URL(request.url);
   const docId = url.searchParams.get("id");
+  const parentId = url.searchParams.get("parentId");
 
   const db = getDb(env.DB);
 
@@ -26,9 +27,33 @@ export async function loader({ request, context }: { request: Request; context: 
     return Response.json(doc);
   }
 
+  // If parentId is provided, return only children of that folder
+  if (parentId !== null) {
+    const whereClause = parentId === ""
+      ? and(eq(document.userId, session.user.id), isNull(document.parentId))
+      : and(eq(document.userId, session.user.id), eq(document.parentId, parentId));
+    
+    const docs = await db.query.document.findMany({
+      where: whereClause,
+      orderBy: [
+        asc(sql`${document.position} IS NULL`),
+        asc(document.position),
+        desc(document.isFolder),
+        asc(document.name),
+      ],
+    });
+    return Response.json(docs);
+  }
+
+  // Otherwise return all documents
   const docs = await db.query.document.findMany({
     where: eq(document.userId, session.user.id),
-    orderBy: [desc(document.isFolder), document.name],
+    orderBy: [
+      asc(sql`${document.position} IS NULL`), // NULLs last
+      asc(document.position),
+      desc(document.isFolder),
+      asc(document.name),
+    ],
   });
 
   return Response.json(docs);
@@ -44,24 +69,55 @@ export async function action({ request, context }: { request: Request; context: 
   const db = getDb(env.DB);
   const method = request.method;
 
+  // Parse body based on content type
+  const contentType = request.headers.get("content-type") || "";
+  let body: Record<string, unknown>;
+  if (contentType.includes("application/json")) {
+    body = await request.json();
+  } else {
+    const formData = await request.formData();
+    body = Object.fromEntries(formData.entries());
+  }
+
   if (method === "POST") {
-    const body = await request.json();
-    const { name, parentId, isFolder, content } = body;
+    const name = body.name as string | undefined;
+    const parentId = (body.parentId as string) || null;
+    const isFolder = body.isFolder === true || body.isFolder === "true";
 
     if (!name) {
       return Response.json({ error: "Name is required" }, { status: 400 });
     }
 
     const now = new Date();
+    const targetParentId = parentId || null;
+
+    // Calculate initial position based on existing siblings
+    let initialPosition = 65536; // Default first position
+    
+    const siblingsWhere = targetParentId === null
+      ? and(eq(document.userId, session.user.id), isNull(document.parentId))
+      : and(eq(document.userId, session.user.id), eq(document.parentId, targetParentId));
+    
+    const siblings = await db.query.document.findMany({
+      where: siblingsWhere,
+      orderBy: [asc(document.position), asc(document.name)],
+    });
+
+    if (siblings.length > 0) {
+      const lastSibling = siblings[siblings.length - 1]!;
+      initialPosition = lastSibling.position ? lastSibling.position * 2 : 65536 * Math.pow(2, siblings.length);
+    }
+
     const doc = await db
       .insert(document)
       .values({
         id: nanoid(),
         userId: session.user.id,
-        parentId: parentId || null,
+        parentId: targetParentId,
         name,
-        content: content || "",
+        content: "",
         isFolder: isFolder || false,
+        position: initialPosition,
         createdAt: now,
         updatedAt: now,
       })
@@ -86,15 +142,19 @@ export async function action({ request, context }: { request: Request; context: 
       return Response.json({ error: "Not found" }, { status: 404 });
     }
 
-    const body = await request.json();
-    const { name, content, parentId } = body;
+    const name = body.name as string | undefined;
+    const content = body.content as string | undefined;
+    const parentId = body.parentId as string | undefined;
+    const positionRaw = body.position;
+    const position = positionRaw !== undefined ? Number(positionRaw) : undefined;
 
     const updated = await db
       .update(document)
       .set({
         ...(name !== undefined && { name }),
         ...(content !== undefined && { content }),
-        ...(parentId !== undefined && { parentId }),
+        ...(parentId !== undefined && { parentId: parentId || null }),
+        ...(position !== undefined && !isNaN(position) && { position }),
         updatedAt: new Date(),
       })
       .where(eq(document.id, docId))

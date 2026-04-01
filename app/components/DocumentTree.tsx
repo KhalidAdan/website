@@ -1,8 +1,9 @@
 import { useCallback, useRef } from "react";
 import { useFetcher } from "react-router";
-import { LazyTreeView, type TreeNode, type BranchNode, isBranchNode, type LazyTreeViewHandle } from "lazy-tree-view";
+import { LazyTreeView, type TreeNode, type BranchNode, isBranchNode, type LazyTreeViewHandle, type BranchProps } from "lazy-tree-view";
 import { FolderIcon, FileText, ChevronRight, ChevronDown, FilePlus, FolderPlus } from "lucide-react";
 import { docsToTree, type DocRow } from "~/utils/documents";
+import { calculatePosition, getSiblings } from "~/utils/position";
 
 interface Props {
   documents: DocRow[];
@@ -28,8 +29,8 @@ export function DocumentTree({ documents, selectedId, onSelect }: Props) {
     const name = prompt("Document name:");
     if (!name) return;
     fetcher.submit(
-      { name, parentId: parentId ?? "", isFolder: false },
-      { method: "POST", action: "/api/documents", encType: "application/json" },
+      { name, parentId: parentId ?? "", isFolder: "false" },
+      { method: "POST", action: "/api/documents", encType: "application/x-www-form-urlencoded" },
     );
   };
 
@@ -37,8 +38,8 @@ export function DocumentTree({ documents, selectedId, onSelect }: Props) {
     const name = prompt("Folder name:");
     if (!name) return;
     fetcher.submit(
-      { name, parentId: parentId ?? "", isFolder: true },
-      { method: "POST", action: "/api/documents", encType: "application/json" },
+      { name, parentId: parentId ?? "", isFolder: "true" },
+      { method: "POST", action: "/api/documents", encType: "application/x-www-form-urlencoded" },
     );
   };
 
@@ -63,7 +64,7 @@ export function DocumentTree({ documents, selectedId, onSelect }: Props) {
     );
   };
 
-  const renderBranch = (node: BranchNode) => {
+  const renderBranch = (node: BranchProps) => {
     const isSelected = node.id === selectedId;
     return (
       <div className="flex items-center">
@@ -75,11 +76,19 @@ export function DocumentTree({ documents, selectedId, onSelect }: Props) {
               : "hover:bg-black/5 dark:hover:bg-white/5"
           }`}
         >
-          {node.isOpen ? (
-            <ChevronDown className="w-4 h-4 shrink-0" />
-          ) : (
-            <ChevronRight className="w-4 h-4 shrink-0" />
-          )}
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              node.onToggleOpen(e);
+            }}
+            className="cursor-pointer"
+          >
+            {node.isOpen ? (
+              <ChevronDown className="w-4 h-4 shrink-0" />
+            ) : (
+              <ChevronRight className="w-4 h-4 shrink-0" />
+            )}
+          </span>
           <FolderIcon className="w-4 h-4 shrink-0" />
           <span className="truncate">{node.name}</span>
         </button>
@@ -112,9 +121,55 @@ export function DocumentTree({ documents, selectedId, onSelect }: Props) {
           <LazyTreeView
             ref={treeRef}
             initialTree={tree}
-            loadChildren={async () => []}
+            loadChildren={async (branch) => {
+              const res = await fetch(`/api/documents?parentId=${branch.id}`);
+              return res.json();
+            }}
             branch={renderBranch}
             item={renderItem}
+            allowDragAndDrop
+            onDrop={(data) => {
+              const sourceId = data.source.id;
+              const targetId = data.target.id;
+              const dropPos = data.position;
+              
+              let targetParentId: string | null = null;
+              
+              if (dropPos === "inside" && isBranchNode(data.target)) {
+                targetParentId = targetId;
+              } else if (dropPos === "before" || dropPos === "after") {
+                const targetDoc = documents.find(d => d.id === targetId);
+                if (targetDoc) {
+                  targetParentId = targetDoc.parentId;
+                }
+              }
+              
+              const sourceDoc = documents.find(d => d.id === sourceId);
+              if (!sourceDoc) return;
+              
+              const siblings = getSiblings(documents, targetParentId, sourceId);
+              
+              let insertIndex = siblings.length;
+              if (dropPos === "before") {
+                const targetIndex = siblings.findIndex(s => s.id === targetId);
+                if (targetIndex !== -1) insertIndex = targetIndex;
+              } else if (dropPos === "after") {
+                const targetIndex = siblings.findIndex(s => s.id === targetId);
+                if (targetIndex !== -1) insertIndex = targetIndex + 1;
+              } else if (dropPos === "inside") {
+                insertIndex = 0;
+              }
+              
+              const newPosition = calculatePosition(siblings, insertIndex);
+              
+              fetcher.submit(
+                { 
+                  parentId: targetParentId ?? "", 
+                  position: newPosition 
+                },
+                { method: "PATCH", action: `/api/documents?id=${sourceId}`, encType: "application/x-www-form-urlencoded" },
+              );
+            }}
           />
         )}
       </div>
